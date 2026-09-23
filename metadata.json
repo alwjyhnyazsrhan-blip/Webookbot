@@ -1,0 +1,6 @@
+{
+  "name": "Webook Auto-Booker Bot - بوت حجز تذاكر Webook",
+  "description": "منصة وأداة بوت حجز تذاكر Webook التلقائي، محاكي التصفح الآلي وتوليد أكواد بايثون السريعة للحجز الفوري لتذاكر الفعاليات والمباريات.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
