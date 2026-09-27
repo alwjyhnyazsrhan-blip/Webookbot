@@ -149,7 +149,28 @@ def reserve_seats_on_webook(email: str, password: str):
         # 4. الانتقال المباشر لصفحة الفعالية
         logger.info(f"الانتقال لصفحة الفعالية والمخطط: {TARGET_EVENT_URL}")
         driver.get(TARGET_EVENT_URL)
-        time.sleep(2)
+        time.sleep(3)
+
+        # 4.1 الضغط على زر (احجز التذاكر) الرسمي لبدء سلة الحجز
+        logger.info("جاري البحث عن زر (احجز التذاكر / Book Tickets)...")
+        book_btn_xpaths = [
+            "//button[contains(., 'احجز التذاكر') or contains(., 'احجز تذكرتك') or contains(., 'Book Tickets') or contains(., 'Book now')]",
+            "//a[contains(., 'احجز التذاكر') or contains(., 'احجز تذكرتك') or contains(., 'Book Tickets')]",
+            "//button[contains(@class, 'book') or contains(@id, 'book')]",
+            "//div[contains(@class, 'sticky')]//button",
+            "//button[contains(@class, 'primary') and contains(., 'احجز')]"
+        ]
+        for b_xpath in book_btn_xpaths:
+            try:
+                b_elem = WebDriverWait(driver, 4).until(EC.element_to_be_clickable((By.XPATH, b_xpath)))
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", b_elem)
+                time.sleep(0.5)
+                b_elem.click()
+                logger.info("✅ تم النقر على زر (احجز التذاكر) بنجاح!")
+                time.sleep(2)
+                break
+            except Exception:
+                continue
 
         # 5. اختيار التاريخ إن وجد تقويم
         try:

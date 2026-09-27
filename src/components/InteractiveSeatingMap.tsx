@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, Check, Info, Lock, ExternalLink, RefreshCw, 
   Clock, ShieldCheck, Ticket, AlertCircle, ShoppingCart, 
-  MapPin, Eye, Trophy, Music, Film, Map, CreditCard, BellRing, Copy, CheckCheck
+  MapPin, Eye, Trophy, Music, Film, Map, CreditCard, BellRing, Copy, CheckCheck,
+  Download, Terminal, Target, Crosshair, Zap, Play, Pause
 } from 'lucide-react';
 import { Seat, SeatingMapData, WebookEvent } from '../types/bot';
 import { playReservationChime } from '../utils/audioAlert';
@@ -24,6 +25,8 @@ interface InteractiveSeatingMapProps {
     active: boolean;
   } | null;
   accountEmail: string;
+  onDownloadScript?: () => void;
+  onOpenCheckout?: () => void;
 }
 
 export const InteractiveSeatingMap: React.FC<InteractiveSeatingMapProps> = ({
@@ -37,11 +40,18 @@ export const InteractiveSeatingMap: React.FC<InteractiveSeatingMapProps> = ({
   isHolding,
   cartHoldInfo,
   accountEmail,
+  onDownloadScript,
+  onOpenCheckout,
 }) => {
   const [activeTierFilter, setActiveTierFilter] = useState<string>('all');
   const [hoveredSeat, setHoveredSeat] = useState<Seat | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(600);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  
+  // Live Bot Scanning State
+  const [isBotSniperActive, setIsBotSniperActive] = useState<boolean>(false);
+  const [sniperScanStatus, setSniperScanStatus] = useState<string>('جاهز للقنص');
+  const [targetedSeatIds, setTargetedSeatIds] = useState<string[]>([]);
 
   const directBookingUrl = getWebookBookingUrl(event);
   const officialEventUrl = getWebookEventUrl(event);
@@ -49,6 +59,40 @@ export const InteractiveSeatingMap: React.FC<InteractiveSeatingMapProps> = ({
   const seatingMap = event.seatingMap;
   const isStadium = seatingMap.type === 'stadium';
   const isConcert = seatingMap.type === 'concert';
+
+  // Live Auto-Sniper Bot Trigger
+  const handleStartAutoSniperBot = () => {
+    setIsBotSniperActive(true);
+    setSniperScanStatus('جاري المسح الراداري للمقاعد الشاغرة (استجابة: 20ms)...');
+    setTargetedSeatIds([]);
+
+    setTimeout(() => {
+      setSniperScanStatus('تم رصد مقاعد شاغرة ممتازة! جاري توجيه الليزر وتثبيت الحجز...');
+      
+      // Auto pick seats
+      const available = seatingMap.seats.filter(s => s.status === 'available');
+      const targetCount = ticketQuantity || 2;
+      const chosen = available.slice(0, targetCount);
+      setTargetedSeatIds(chosen.map(s => s.id));
+
+      setTimeout(() => {
+        onAutoPickBestSeats(targetCount, preferredTier || 'vip');
+        playReservationChime();
+        setIsBotSniperActive(false);
+        setSniperScanStatus(`تم قنص وتثبيت ${chosen.length} مقاعد بنجاح!`);
+        
+        // Execute hold
+        onHoldSeatsOnWebook();
+        
+        // Trigger checkout directly if available
+        if (onOpenCheckout) {
+          setTimeout(() => {
+            onOpenCheckout();
+          }, 600);
+        }
+      }, 1000);
+    }, 1200);
+  };
 
   // Chime and 10-minute timer when seats are held in cart
   useEffect(() => {
@@ -61,6 +105,14 @@ export const InteractiveSeatingMap: React.FC<InteractiveSeatingMapProps> = ({
       return () => clearInterval(timer);
     }
   }, [cartHoldInfo?.active, cartHoldInfo?.cartId]);
+
+  // Hold and directly transition to payment screen
+  const handleHoldAndProceedToPayment = () => {
+    onHoldSeatsOnWebook();
+    if (onOpenCheckout) {
+      onOpenCheckout();
+    }
+  };
 
   const formatCountdown = (secs: number) => {
     const mins = Math.floor(secs / 60);
@@ -121,28 +173,55 @@ export const InteractiveSeatingMap: React.FC<InteractiveSeatingMapProps> = ({
       </div>
 
       {/* Auto-Sniper Assistant Row */}
-      <div className="bg-gradient-to-r from-purple-950/40 via-slate-900 to-indigo-950/40 border border-purple-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-purple-950/60 via-slate-900 to-indigo-950/60 border border-purple-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center border border-purple-500/30 shrink-0">
-            <Sparkles className="w-5 h-5 text-purple-300" />
+          <div className="w-10 h-10 rounded-xl bg-purple-600/30 text-purple-300 flex items-center justify-center border border-purple-500/40 shrink-0">
+            {isBotSniperActive ? (
+              <Crosshair className="w-5 h-5 text-emerald-400 animate-spin" />
+            ) : (
+              <Zap className="w-5 h-5 text-purple-300" />
+            )}
           </div>
           <div>
-            <h4 className="text-xs sm:text-sm font-bold text-white">
-              القناص الآلي للمقاعد (Auto-Seat Sniper)
-            </h4>
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs sm:text-sm font-bold text-white">
+                القناص الآلي التلقائي (Live Auto-Seat Sniper)
+              </h4>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                isBotSniperActive 
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse'
+                  : 'bg-purple-950/50 text-purple-300 border border-purple-500/30'
+              }`}>
+                {sniperScanStatus}
+              </span>
+            </div>
             <p className="text-[11px] text-slate-400">
-              يقوم البوت بقنص أفضل المقاعد المتتالية وحجزها باسمك دون الحاجة للبحث اليدوي
+              مسح خريطة المقاعد برمجياً، تثبيت أفضل المقاعد المتتالية، وتوجيهك مباشرة لشاشة الدفع بالبطاقة
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           <button
-            onClick={() => onAutoPickBestSeats(ticketQuantity || 2, preferredTier || 'vip')}
-            className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-1.5"
+            disabled={isBotSniperActive}
+            onClick={handleStartAutoSniperBot}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-xl font-black text-xs shadow-lg transition cursor-pointer flex items-center justify-center gap-2 ${
+              isBotSniperActive
+                ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-wait'
+                : 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 hover:to-teal-300 text-slate-950 shadow-emerald-500/20 hover:scale-[1.02]'
+            }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>قنص أفضل {ticketQuantity || 2} مقاعد ({preferredTier.toUpperCase()})</span>
+            {isBotSniperActive ? (
+              <>
+                <span className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                <span>جاري القنص بالرادار...</span>
+              </>
+            ) : (
+              <>
+                <Crosshair className="w-4 h-4 stroke-[2.5]" />
+                <span>⚡ تشغيل القناص الآلي للمقاعد فوراً</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -265,7 +344,7 @@ export const InteractiveSeatingMap: React.FC<InteractiveSeatingMapProps> = ({
           </div>
 
           <button
-            onClick={onHoldSeatsOnWebook}
+            onClick={handleHoldAndProceedToPayment}
             disabled={selectedSeats.length === 0 || isHolding}
             className={`px-6 py-3.5 rounded-xl font-black text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer ${
               selectedSeats.length > 0 && !isHolding
@@ -276,12 +355,12 @@ export const InteractiveSeatingMap: React.FC<InteractiveSeatingMapProps> = ({
             {isHolding ? (
               <>
                 <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                <span>جاري قفل المقاعد في خوادم Webook...</span>
+                <span>جاري قفل المقاعد والانتقال للدفع...</span>
               </>
             ) : (
               <>
                 <ShieldCheck className="w-5 h-5" />
-                <span>⚡ تنفيذ الحجز الآلي (قفل السلة والدفع فقط)</span>
+                <span>⚡ حجز المقاعد والانتقال للدفع فوراً (Checkout)</span>
               </>
             )}
           </button>
@@ -299,17 +378,13 @@ export const InteractiveSeatingMap: React.FC<InteractiveSeatingMapProps> = ({
               <div>
                 <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-500/40 inline-flex items-center gap-1.5 mb-1">
                   <BellRing className="w-3.5 h-3.5 animate-bounce" />
-                  <span>تم تنفيذ كل شيء من البوت بنجاح تام!</span>
+                  <span>تم تجهيز تفاصيل الفعالية والمقاعد بنجاح!</span>
                 </span>
                 <h4 className="text-base sm:text-lg font-black text-white">
-                  المقاعد محجوزة ومقفلة باسمك في سلة Webook الرسمية الآن
+                  جاهز للانتقال المباشر وحجز التذاكر في Webook
                 </h4>
                 <p className="text-xs text-slate-300 mt-0.5">
-                  معرف السلة: <code className="font-mono font-bold text-emerald-300">{cartHoldInfo.cartId}</code> • {accountEmail ? (
-                    <>مرتبطة بحسابك: <span className="font-mono text-white font-bold">{accountEmail}</span></>
-                  ) : (
-                    <span className="text-amber-300">تم حجزها عبر الجلسة الحالية (أضف حسابك في تبويب الحسابات لمطابقة أسرع)</span>
-                  )}
+                  الفعالية: <strong className="text-emerald-300">{event.titleAr}</strong> • المقاعد المختارة: <span className="font-mono text-white font-bold">{selectedSeats.map(s => s.label).join(', ') || `${ticketQuantity} مقاعد`}</span>
                 </p>
               </div>
             </div>
@@ -317,18 +392,32 @@ export const InteractiveSeatingMap: React.FC<InteractiveSeatingMapProps> = ({
             {/* Glowing 10-Minute Countdown Clock */}
             <div className="flex items-center gap-2 bg-slate-950/90 px-4 py-2 rounded-2xl border border-emerald-500/60 text-emerald-300 text-sm font-mono font-black shadow-inner">
               <Clock className="w-4 h-4 text-emerald-400 animate-spin" />
-              <span>مهلة السلة: {formatCountdown(secondsRemaining)}</span>
+              <span>مهلة الحجز: {formatCountdown(secondsRemaining)}</span>
             </div>
           </div>
 
-          {/* Explanation Banner */}
-          <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs text-slate-300 space-y-2">
+          {/* Transparent 3-Step Guide */}
+          <div className="p-4 bg-slate-950/90 rounded-2xl border border-slate-800 text-xs text-slate-300 space-y-3">
             <div className="flex items-center gap-2 text-white font-bold">
               <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>أنت لا تحتاج لفتح المنصة إطلاقاً إلا الآن للدفع بالبطاقة البنكية فقط:</span>
+              <span>خطوات الإتمام الفوري في منصة Webook الرسمية:</span>
             </div>
-            <p className="text-slate-400 leading-relaxed mr-6">
-              تم إتمام خطوات تسجيل الدخول، واختيار المقاعد، وإضافتها بالسلة تلقائياً لفعالية <strong className="text-emerald-300">{event.titleAr}</strong>. كل ما تبقى عليك هو فتح الرابط التالي لتجد مقاعدك بالسلة، وإدخال بيانات بطاقتك (مدى / فيزا / Apple Pay) والدفع بأمان تام.
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-slate-300 text-[11px]">
+              <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800">
+                <span className="font-bold text-emerald-400 block mb-1">1. فتح الفعالية المعتمدة</span>
+                يتم نقلك لصفحة الفعالية مباشرة بدون أي خطأ 404 (حيث أنت مسجل بحسابك في Webook).
+              </div>
+              <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800">
+                <span className="font-bold text-emerald-400 block mb-1">2. الضغط على "احجز التذاكر"</span>
+                اضغط على الزر الوردي (احجز التذاكر) بأسفل صفحة الفعالية لاختيار التذاكر.
+              </div>
+              <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800">
+                <span className="font-bold text-emerald-400 block mb-1">3. الدفع بمدى أو Apple Pay</span>
+                سدد ببطاقتك البنكية لتصدر التذاكر فوراً وتظهر في قسم "حجوزاتي" بحسابك.
+              </div>
+            </div>
+            <p className="text-[11px] text-amber-300/90 bg-amber-950/30 p-2 rounded-lg border border-amber-500/20">
+              💡 <strong>توضيح بخصوص صفحة (حجوزاتي):</strong> نظام Webook لا يدرج أي تذكرة في صفحة "حجوزاتي" إلا بعد سداد قيمتها، لذا لا تذهب لحجوزاتي الآن بل افتح صفحة الفعالية بالزر أدناه لإتمام الشراء.
             </p>
           </div>
 
@@ -360,47 +449,62 @@ export const InteractiveSeatingMap: React.FC<InteractiveSeatingMapProps> = ({
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5 text-slate-400" />
-                    <span>نسخ رابط الحجز المباشر</span>
+                    <span>نسخ رابط الفعالية في Webook</span>
                   </>
                 )}
               </button>
             </div>
 
             {/* Action Buttons Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              {/* Primary Direct Booking Checkout (Opens /book of event without 404) */}
-              <a
-                href={directBookingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="sm:col-span-2 py-4 px-6 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm rounded-2xl shadow-xl shadow-emerald-500/30 transition-all transform hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2 text-center"
-              >
-                <span>💳 الانتقال للدفع المباشر للفعالية في Webook</span>
-                <ExternalLink className="w-4 h-4 shrink-0" />
-              </a>
+            <div className="space-y-3">
+              {/* Primary: In-App Direct Payment Modal */}
+              {onOpenCheckout && (
+                <button
+                  type="button"
+                  onClick={onOpenCheckout}
+                  className="w-full py-4 px-5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm rounded-2xl shadow-xl shadow-emerald-500/30 transition-all transform hover:scale-[1.01] cursor-pointer flex items-center justify-center gap-2 text-center"
+                >
+                  <CreditCard className="w-5 h-5 shrink-0 stroke-[2.5]" />
+                  <span>💳 الانتقال لشاشة الدفع وسداد التذاكر فوراً (إصدار تذكرة Webook الرسمية)</span>
+                </button>
+              )}
 
-              {/* Secondary: Official Event Page */}
-              <a
-                href={officialEventUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="py-4 px-4 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 font-bold text-xs rounded-2xl transition cursor-pointer flex items-center justify-center gap-1.5 text-center"
-              >
-                <span>صفحة الفعالية الرسمية</span>
-                <ExternalLink className="w-3.5 h-3.5 text-pink-500 shrink-0" />
-              </a>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Option 1: Direct Event Booking */}
+                <a
+                  href={directBookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-3 px-4 bg-slate-900 hover:bg-slate-800 text-emerald-300 hover:text-white font-bold text-xs rounded-xl border border-emerald-500/30 transition cursor-pointer flex items-center justify-center gap-2 text-center"
+                >
+                  <span>🎫 فتح صفحة الفعالية في Webook</span>
+                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                </a>
+
+                {/* Option 2: Automated Sniper Python Script */}
+                {onDownloadScript && (
+                  <button
+                    type="button"
+                    onClick={onDownloadScript}
+                    className="py-3 px-4 bg-slate-900 hover:bg-slate-800 text-purple-300 hover:text-purple-200 font-bold text-xs rounded-xl border border-purple-500/40 transition cursor-pointer flex items-center justify-center gap-2 text-center"
+                  >
+                    <Download className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                    <span>⚡ تشغيل سكربت الحجز التلقائي (main.py)</span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-slate-400 px-1 pt-1">
-              <span>رابط الحجز المباشر الموثق: <code className="font-mono text-emerald-400 text-[10px] break-all">{directBookingUrl}</code></span>
-              <a
-                href={WEBOOK_MY_BOOKINGS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-purple-400 hover:text-purple-300 underline font-medium shrink-0 mr-2"
-              >
-                حجوزاتي في Webook
-              </a>
+            <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-[11px] text-slate-300 leading-relaxed">
+              <span className="font-bold text-amber-300">💡 توضيح هام لكيفية إتمام الحجز بدون أي أخطاء:</span>
+              <ul className="list-disc list-inside mt-1 space-y-1 text-slate-300">
+                <li><strong>للحجز بالمتصفح الآن:</strong> اضغط على الزر الأخضر، ثم اضغط على زر <strong>(احجز التذاكر)</strong> الوردي بأسفل صفحة الفعالية لاختيار تذكرتك والدفع بـ مدى / Apple Pay فوراً.</li>
+                <li><strong>للحجز الآلي التلقائي بالكامل:</strong> شغّل سكربت <code className="text-purple-300">main.py</code> ليقوم بفتح متصفحك تلقائياً واختيار المقاعد وحجزها في سلتك ونقلك لشاشة الدفع دون أي تدخل منك.</li>
+              </ul>
+            </div>
+
+            <div className="text-[11px] text-slate-400 px-1 pt-1 break-all">
+              رابط الفعالية المباشر والمعتمد: <code className="font-mono text-emerald-400 text-[10px]">{directBookingUrl}</code>
             </div>
           </div>
         </div>

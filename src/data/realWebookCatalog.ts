@@ -5,6 +5,67 @@ import { generateVenueSeatingMap } from '../services/webookSyncService';
 
 export const REAL_WEBOOK_LIVE_CATALOG: WebookEvent[] = [
   {
+    "id": "al-ettifaq-vs-al-nassr-roshn-2026",
+    "slug": "al-ettifaq-vs-al-nassr-roshn-2026",
+    "title": "Roshn Saudi League 25/26 - Al Ettifaq x Al Nassr",
+    "titleAr": "دوري روشن 25/26 - الاتفاق x النصر | الدمام، ملعب إيكو",
+    "url": "https://webook.com/ar/events/al-ettifaq-vs-al-nassr-roshn-2026",
+    "category": "رياضة ومباريات",
+    "location": "Dammam, Prince Mohamed bin Fahd Stadium",
+    "locationAr": "الدمام، ملعب إيكو (استاد الأمير محمد بن فهد)",
+    "date": "الجمعة، 3 أكتوبر 2026 • 21:00",
+    "datesAvailable": [
+      "2026-10-03",
+      "2026-10-04",
+      "2026-10-18"
+    ],
+    "timesAvailable": [
+      "21:00 - 23:00",
+      "18:00 - 20:00"
+    ],
+    "image": "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1200&auto=format&fit=crop",
+    "bannerImage": "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1200&auto=format&fit=crop",
+    "descriptionAr": "مباراة قمة الجولة في دوري روشن السعودي للمحترفين 2025/2026 بين نادي الاتفاق ونادي النصر بقيادة النجوم العالميين على أرضية ملعب إيكو (استاد الأمير محمد بن فهد) بالدمام. إمكانية الحجز وقنص التذاكر بالبوت الفوري.",
+    "tiers": [
+      {
+        "id": "cat3",
+        "name": "Cat 3",
+        "nameAr": "الدرجة الثالثة (خلف المرمى)",
+        "price": 35,
+        "available": true
+      },
+      {
+        "id": "regular",
+        "name": "Cat 2",
+        "nameAr": "الدرجة الثانية (أطراف الملعب)",
+        "price": 75,
+        "available": true
+      },
+      {
+        "id": "cat1",
+        "name": "Cat 1",
+        "nameAr": "الدرجة الأولى (الواجهة الرئيسية)",
+        "price": 140,
+        "available": true
+      },
+      {
+        "id": "vip",
+        "name": "VIP Silver",
+        "nameAr": "المنصة الفضية VIP",
+        "price": 350,
+        "available": true
+      },
+      {
+        "id": "royal",
+        "name": "Royal Gold",
+        "nameAr": "المنصة الملكية الذهبية",
+        "price": 750,
+        "available": true
+      }
+    ],
+    "venueType": "stadium"
+  },
+  {
     "id": "afc-cup-27-chn-pack",
     "slug": "afc-cup-27-chn-pack",
     "title": "AFC Asian Cup 2027: CHN",

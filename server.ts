@@ -47,7 +47,7 @@ async function startServer() {
 
   // API endpoint: Lock/Hold selected seats in Webook Cart
   app.post('/api/webook/hold-seats', async (req, res) => {
-    const { eventId, seats, email, date, tier } = req.body;
+    const { eventId, eventUrl, seats, email, date, tier } = req.body;
 
     if (!seats || !Array.isArray(seats) || seats.length === 0) {
       return res.status(400).json({ success: false, message: 'يرجى اختيار مقعد واحد على الأقل من المخطط' });
@@ -58,17 +58,18 @@ async function startServer() {
     // Hold expires in 10 minutes (official Webook cart window)
     const holdExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const cartId = 'wbk_cart_' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    const targetUrl = (eventUrl || 'https://webook.com/ar/explore').replace(/\/book\/?$/, '');
 
     return res.json({
       success: true,
-      message: `تم حجز المقاعد (${seats.map((s: any) => s.label || s.id).join(', ')}) بنجاح في منصة Webook الرسمية!`,
+      message: `تم تجهيز طلب حجز المقاعد (${seats.map((s: any) => s.label || s.id).join(', ')}) بنجاح!`,
       cartId,
       holdExpiresAt,
       seats,
       totalPrice: seats.reduce((sum: number, s: any) => sum + (s.price || 85), 0),
-      cartUrl: 'https://webook.com/ar/cart',
-      checkoutUrl: 'https://webook.com/ar/checkout',
-      instructionsAr: 'تم تثبيت المقاعد في سلتك الرسمية. يمكنك الانتقال الآن إلى Webook لإتمام الدفع قبل انتهاء مهلة الـ 10 دقائق.'
+      cartUrl: targetUrl,
+      checkoutUrl: targetUrl,
+      instructionsAr: 'جاهز للانتقال الفوري إلى صفحة الفعالية في Webook لإتمام الحجز والدفع بالبطاقة البنكية.'
     });
   });
 

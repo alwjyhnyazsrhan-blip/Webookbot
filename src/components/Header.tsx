@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Bot, Terminal, Code2, Download, HelpCircle, ShieldCheck, 
-  Zap, Map, ShoppingCart, Compass, Sparkles 
+  Zap, Map, ShoppingCart, Compass, Sparkles, Ticket 
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -12,6 +12,8 @@ interface HeaderProps {
   botStatus: 'idle' | 'running' | 'success' | 'failed';
   accountsCount: number;
   selectedSeatsCount: number;
+  onOpenBookings?: () => void;
+  bookingsCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,6 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   botStatus,
   accountsCount,
   selectedSeatsCount,
+  onOpenBookings,
+  bookingsCount = 0,
 }) => {
   return (
     <header className="border-b border-slate-800 bg-[#07090e]/95 backdrop-blur-md sticky top-0 z-40">
@@ -61,6 +65,18 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Desktop Nav Tabs */}
           <nav className="hidden md:flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
             <button
+              onClick={() => setActiveTab('runner')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'runner'
+                  ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-slate-950 font-black shadow-lg shadow-emerald-500/25 ring-1 ring-emerald-400'
+                  : 'text-emerald-400 hover:text-white hover:bg-emerald-950/40'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 fill-current" />
+              <span>بوت الويب المباشر ⚡</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('explore')}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'explore'
@@ -90,15 +106,15 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
-              onClick={() => setActiveTab('runner')}
+              onClick={() => setActiveTab('accounts')}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'runner'
+                activeTab === 'accounts'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
               }`}
             >
-              <Zap className="w-3.5 h-3.5 text-purple-400" />
-              <span>المحاكي</span>
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>الحسابات ({accountsCount})</span>
             </button>
 
             <button
@@ -111,18 +127,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Code2 className="w-3.5 h-3.5 text-blue-400" />
               <span>كود بايثون</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('accounts')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'accounts'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>الحسابات ({accountsCount})</span>
             </button>
 
             <button
@@ -140,6 +144,21 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Quick Action Buttons */}
           <div className="flex items-center gap-2">
+            {onOpenBookings && (
+              <button
+                onClick={onOpenBookings}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-700 transition cursor-pointer"
+              >
+                <Ticket className="w-3.5 h-3.5 text-[#ff007a]" />
+                <span>حجوزاتي</span>
+                {bookingsCount > 0 && (
+                  <span className="px-1.5 py-0.2 bg-emerald-500 text-slate-950 font-bold text-[10px] rounded-full">
+                    {bookingsCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             <a
               href="https://webook.com/ar/explore"
               target="_blank"
@@ -171,6 +190,17 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Mobile Tab Bar */}
         <div className="flex md:hidden items-center justify-around py-2 border-t border-slate-800/60 overflow-x-auto gap-1">
           <button
+            onClick={() => setActiveTab('runner')}
+            className={`px-3 py-1.5 text-xs rounded-xl flex items-center gap-1.5 whitespace-nowrap cursor-pointer font-black transition-all ${
+              activeTab === 'runner'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md shadow-emerald-500/30 ring-1 ring-emerald-400'
+                : 'text-emerald-400 bg-emerald-950/40 border border-emerald-500/30'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 fill-current" />
+            <span>بوت الويب ⚡</span>
+          </button>
+          <button
             onClick={() => setActiveTab('explore')}
             className={`px-2.5 py-1 text-xs rounded-md flex items-center gap-1 whitespace-nowrap cursor-pointer ${
               activeTab === 'explore' ? 'bg-[#ff007a] text-white font-bold' : 'text-slate-400'
@@ -189,12 +219,12 @@ export const Header: React.FC<HeaderProps> = ({
             <span>المخطط</span>
           </button>
           <button
-            onClick={() => setActiveTab('runner')}
+            onClick={() => setActiveTab('accounts')}
             className={`px-2.5 py-1 text-xs rounded-md cursor-pointer ${
-              activeTab === 'runner' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400'
+              activeTab === 'accounts' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400'
             }`}
           >
-            المحاكي
+            الحسابات ({accountsCount})
           </button>
           <button
             onClick={() => setActiveTab('code')}
@@ -203,14 +233,6 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             الكود
-          </button>
-          <button
-            onClick={() => setActiveTab('accounts')}
-            className={`px-2.5 py-1 text-xs rounded-md cursor-pointer ${
-              activeTab === 'accounts' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400'
-            }`}
-          >
-            الحسابات ({accountsCount})
           </button>
           <button
             onClick={() => setActiveTab('settings')}

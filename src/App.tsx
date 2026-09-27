@@ -9,13 +9,36 @@ import { EventSelector } from './components/EventSelector';
 import { BotSettings } from './components/BotSettings';
 import { BotGuideModal } from './components/BotGuideModal';
 import { LiveWebookSyncBanner } from './components/LiveWebookSyncBanner';
-import { Account, BotConfig, BotLog, WebookEvent, Seat } from './types/bot';
+import { WebookCheckoutModal } from './components/WebookCheckoutModal';
+import { MyBookingsModal } from './components/MyBookingsModal';
+import { Account, BotConfig, BotLog, WebookEvent, Seat, ConfirmedBooking } from './types/bot';
 import { webookSyncManager, WebookSyncStatus, LIVE_WEBOOK_CATALOG } from './services/webookSyncService';
 import { generateSeleniumPythonScript } from './utils/codeGenerators';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'explore' | 'map' | 'runner' | 'code' | 'accounts' | 'settings'>('explore');
+  const [activeTab, setActiveTab] = useState<'explore' | 'map' | 'runner' | 'code' | 'accounts' | 'settings'>('runner');
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const [isBookingsOpen, setIsBookingsOpen] = useState<boolean>(false);
+
+  // Confirmed bookings list (stored in localStorage)
+  const [confirmedBookings, setConfirmedBookings] = useState<ConfirmedBooking[]>(() => {
+    try {
+      const saved = localStorage.getItem('webook_confirmed_bookings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  // Save bookings to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('webook_confirmed_bookings', JSON.stringify(confirmedBookings));
+    } catch (e) {}
+  }, [confirmedBookings]);
 
   // Synced events from Webook
   const [events, setEvents] = useState<WebookEvent[]>(LIVE_WEBOOK_CATALOG);
@@ -265,6 +288,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventId: currentEvent.id,
+          eventUrl: currentEvent.url,
           seats: selectedSeats,
           email: targetEmail || 'user@webook-account',
           date: botConfig.selectedDate,
@@ -331,6 +355,20 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  const handleBookingSuccess = (newBooking: ConfirmedBooking) => {
+    setConfirmedBookings((prev) => [newBooking, ...prev]);
+    handleUpdateLog({
+      id: Math.random().toString(36).substring(7),
+      timestamp: new Date().toLocaleTimeString(),
+      level: 'success',
+      message: `🎉 [CONFIRMED] تم تأكيد الحجز وإصدار التذكرة: ${newBooking.referenceCode} لفعالية: ${newBooking.eventTitle}`,
+    });
+  };
+
+  const handleRemoveBooking = (id: string) => {
+    setConfirmedBookings((prev) => prev.filter((b) => b.id !== id));
+  };
+
   return (
     <div className="min-h-screen bg-[#06080d] text-slate-100 flex flex-col font-sans" dir="rtl">
       {/* Top Header */}
@@ -342,6 +380,8 @@ export default function App() {
         botStatus={isHolding ? 'running' : 'idle'}
         accountsCount={accounts.length}
         selectedSeatsCount={selectedSeats.length}
+        onOpenBookings={() => setIsBookingsOpen(true)}
+        bookingsCount={confirmedBookings.length}
       />
 
       {/* Main Content Area */}
@@ -387,6 +427,8 @@ export default function App() {
               isHolding={isHolding}
               cartHoldInfo={cartHoldInfo}
               accountEmail={accounts[0]?.email || ''}
+              onDownloadScript={handleDownloadScript}
+              onOpenCheckout={() => setIsCheckoutOpen(true)}
             />
           </div>
         )}
@@ -397,11 +439,22 @@ export default function App() {
             accounts={accounts}
             config={botConfig}
             event={currentEvent}
+            events={events}
+            onSelectEvent={handleSelectEvent}
+            onAddCustomUrl={handleAddCustomUrl}
+            onUpdateConfig={handleUpdateConfig}
+            onAddAccount={handleAddAccount}
+            onUpdateAccount={handleUpdateAccount}
             onUpdateLog={handleUpdateLog}
             logs={logs}
             onClearLogs={handleClearLogs}
             selectedSeats={selectedSeats}
+            onAutoPickBestSeats={handleAutoPickBestSeats}
             onOpenSeatingMap={() => setActiveTab('map')}
+            onDownloadScript={handleDownloadScript}
+            onOpenCheckout={() => setIsCheckoutOpen(true)}
+            onHoldSeatsOnWebook={handleHoldSeatsOnWebook}
+            isHolding={isHolding}
           />
         )}
 
@@ -433,6 +486,25 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Official Webook Checkout & Payment Modal */}
+      <WebookCheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        event={currentEvent}
+        selectedSeats={selectedSeats}
+        accountEmail={accounts[0]?.email || ''}
+        onBookingSuccess={handleBookingSuccess}
+        onDownloadScript={handleDownloadScript}
+      />
+
+      {/* My Bookings Modal */}
+      <MyBookingsModal
+        isOpen={isBookingsOpen}
+        onClose={() => setIsBookingsOpen(false)}
+        bookings={confirmedBookings}
+        onRemoveBooking={handleRemoveBooking}
+      />
 
       {/* Guide Modal */}
       <BotGuideModal

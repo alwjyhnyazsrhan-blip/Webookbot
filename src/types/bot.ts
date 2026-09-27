@@ -124,3 +124,26 @@ export type BotStep =
   | 'click_reserve'
   | 'checkout_success'
   | 'hold_cart_success';
+
+export interface ConfirmedBooking {
+  id: string;
+  referenceCode: string;
+  eventId: string;
+  eventTitle: string;
+  eventImage: string;
+  eventDate: string;
+  eventTime: string;
+  eventLocation: string;
+  seats: Seat[];
+  totalPrice: number;
+  paymentMethod: 'mada' | 'apple_pay' | 'visa' | 'wallet';
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  bookedAt: string;
+  gate: string;
+  qrCodeData: string;
+  barcode: string;
+  status: 'confirmed' | 'active';
+}
+
